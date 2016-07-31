@@ -1,0 +1,21 @@
+{
+  "name": "ttlibjs",
+  "description": "taktod's js library",
+  "main": "ttLibJs.js",
+  "authors": [
+    "taktod"
+  ],
+  "license": "BSD-3-Clause",
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "src/js/bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "^3.1.0"
+  }
+}

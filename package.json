@@ -1,0 +1,22 @@
+{
+  "name": "ttlibjs",
+  "version": "0.1.0",
+  "description": "taktod's js library",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "taktod",
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "browser-sync": "^2.13.0",
+    "del": "^2.2.1",
+    "es6-promise": "^3.2.1",
+    "gulp": "^3.9.1",
+    "gulp-concat": "^2.6.0",
+    "gulp-exec": "^2.1.2",
+    "gulp-plumber": "^1.1.0",
+    "gulp-typescript": "^2.13.6",
+    "merge": "^1.2.0"
+  }
+}
