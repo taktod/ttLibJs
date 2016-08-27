@@ -27,6 +27,7 @@ $(function() {
         */
 
 // sceneCapture と sceneDrawerの動作テスト
+/*
         navigator.getUserMedia({
             audio:false,
             video:true
@@ -51,6 +52,23 @@ $(function() {
         },
         (error:MediaStreamError) => {
             console.log("error");
-        });
+        });*/
+//        console.log("aacのデータをAudioContextで再生してみたいと思う。ただし後ろに無音aacをつけてやる方向で・・・");
+        // とりあえず、scriptNodeによる再生動作
+        var context:AudioContext = new AudioContext();
+        var player:tt.ScriptPlayer = new tt.ScriptPlayer(context, 2);
+        var playerNode:AudioNode = player.refNode();
+        playerNode.connect(context.destination);
+        // webSocketでデータをもらう。
+        var ws:WebSocket = new WebSocket("ws://localhost:8080/");
+        ws.binaryType = "arraybuffer";
+        ws.onmessage = (e:MessageEvent) => {
+            var pcm:Int16Array = new Int16Array(e.data);
+            player.queueInt16Array(pcm, false);
+        };
+        ws.onopen = (e) => {
+            // サーバー側でdecodeして応答を取得
+            ws.send("mp3decode");
+        };
     });
 });

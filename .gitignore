@@ -1,0 +1,7 @@
+/.vscode/
+/dest/
+/node_modules/
+/**/.DS_Store
+/src/js/
+/typings/
+.project

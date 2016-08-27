@@ -135,11 +135,12 @@ var ttLibJs;
                     return;
                 }
                 var bufferNode = this.context.createBufferSource();
+                // ここ・・・・lengthに+αつけておかないと、無音分追加されないのでは？
                 var appendBuffer = this.context.createBuffer(channelNum, length, sampleRate);
                 for (var i = 0; i < channelNum; ++i) {
                     var dest = appendBuffer.getChannelData(i);
                     for (var j = 0; j < length; ++j) {
-                        dest[j] = pcm[channelNum * i + j] / 32767;
+                        dest[j] = pcm[i + channelNum * j] / 32767;
                     }
                 }
                 bufferNode.buffer = appendBuffer;
@@ -152,7 +153,7 @@ var ttLibJs;
                     // currentTimeより進み過ぎてしまった場合は、無音分startTimeを進ませておかないとこまったことになる。
                     this.startPos = this.context.currentTime - this.pts;
                 }
-                console.log(this.startPos + this.pts);
+                //                console.log(this.startPos + this.pts);
                 bufferNode.start(this.startPos + this.pts);
                 //                bufferNode.start(0); // こっちにすると即再生される ただし音がおかしくなる。
                 this.pts += length / sampleRate; // 追加したpts分
