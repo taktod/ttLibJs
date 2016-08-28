@@ -182,7 +182,7 @@ var ttLibJs;
                     this.holdPcm16Buffers.push(pcm);
                 }
                 else {
-                    this.holdAudioBuffers.push(new Int16Array(pcm));
+                    this.holdPcm16Buffers.push(new Int16Array(pcm));
                 }
                 while (this.processPlay()) {
                     ;
