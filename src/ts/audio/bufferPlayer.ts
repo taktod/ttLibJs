@@ -1,3 +1,5 @@
+/// <reference path="myAudioBuffer.ts" />
+
 namespace ttLibJs {
     export namespace audio {
         /**
@@ -11,16 +13,33 @@ namespace ttLibJs {
             private startPos:number;
             private isStartPlaying:boolean;
             private pts:number;
+            private holdPcm16Buffers:Array<Int16Array>;
+            private holdAudioBuffers:Array<Int16Array>;
+            private channelNum:number;
+            private sampleRate:number;
             /**
              * コンストラクタ
              * @param context AudioContext
              */
-            constructor(context:AudioContext) {
+            constructor(
+                    context:AudioContext,
+                    sampleRate:number,
+                    channelNum:number) {
                 this.context = context;
                 this.gainNode = context.createGain();
                 this.startPos = 0;
                 this.isStartPlaying = true;
                 this.pts = 0;
+                this.holdAudioBuffers = null;
+                this.holdPcm16Buffers = null;
+                this.sampleRate = sampleRate;
+                this.channelNum = channelNum;
+                setInterval(() => {
+//                    console.log("interval処理");
+                    while(this.processPlay()) {
+                        ;
+                    }
+                }, 1000);
             }
             /**
              * 動作nodeを参照します。
@@ -64,6 +83,67 @@ namespace ttLibJs {
                 bufferNode.start(this.startPos + this.pts);
                 this.pts += buffer.length / buffer.sampleRate;
             }
+            public queueInt16Array2(
+                    pcm:Int16Array,
+                    nonCopyMode:boolean):void {
+                if(this.context == null) {
+                    return;
+                }
+                if(this.holdPcm16Buffers == null) {
+                    this.holdAudioBuffers = null;
+                    this.holdPcm16Buffers = [];
+                }
+                if(nonCopyMode) {
+                    this.holdPcm16Buffers.push(pcm);
+                }
+                else {
+                    this.holdAudioBuffers.push(new Int16Array(pcm));
+                }
+                while(this.processPlay()) {
+                    ;
+                }
+            }
+            private processPlay():boolean {
+                // データの再生を実施します。
+                // 全部のデータをBuffer化してしまうと、データが多くなりすぎてきちんと動作できなくなることがある模様。
+                // よってすぐに再生でないデータは、pcmのまま保持しておかなければならない。
+                if(this.pts / this.sampleRate > this.context.currentTime + 5) {
+                    return false;
+                }
+                var pcm:Int16Array = this.holdPcm16Buffers.shift();
+                if(pcm == null) {
+                    return false;
+                }
+                var length:number = pcm.length / this.channelNum;
+                // コピーして保持しておくか、そのまま保持するかは重要なところ・・・
+                var bufferNode:AudioBufferSourceNode = this.context.createBufferSource();
+                // ここ・・・・lengthに+αつけておかないと、無音分追加されないのでは？
+                var appendBuffer:AudioBuffer = this.context.createBuffer(
+                    this.channelNum,
+                    length + 500,
+                    this.sampleRate);
+                for(var i = 0;i < this.channelNum;++ i) {
+                    var dest:Float32Array = appendBuffer.getChannelData(i);
+                    for(var j = 0;j < length;++ j) {
+                        dest[j] = pcm[i + this.channelNum * j] / 32767;
+                    }
+                }
+                bufferNode.buffer = appendBuffer;
+                bufferNode.connect(this.gainNode);
+                if(this.isStartPlaying) {
+                    this.isStartPlaying = false;
+                    this.startPos = this.context.currentTime;
+                }
+                if(this.startPos + this.pts / this.sampleRate < this.context.currentTime) {
+                    // currentTimeより進み過ぎてしまった場合は、無音分startTimeを進ませておかないとこまったことになる。
+                    this.startPos = this.context.currentTime - this.pts / this.sampleRate;
+                }
+                bufferNode.start(this.startPos + this.pts / this.sampleRate);
+                this.pts += length; // 追加したpts分
+                return true;
+            }
+
+            // あとはtimerの動作で必要に応じてデータをAudioBuffer化していきます。
             /**
              * int16Arrayのpcmデータを再生にまわします。
              * @param pcm        再生するpcm
@@ -79,6 +159,9 @@ namespace ttLibJs {
                 if(this.context == null) {
                     return;
                 }
+                // 全部のデータをBuffer化してしまうと、データが多くなりすぎてきちんと動作できなくなることがある模様。
+                // よってすぐに再生でないデータは、pcmのまま保持しておかなければならない。
+                // コピーして保持しておくか、そのまま保持するかは重要なところ・・・
                 var bufferNode:AudioBufferSourceNode = this.context.createBufferSource();
                 // ここ・・・・lengthに+αつけておかないと、無音分追加されないのでは？
                 var appendBuffer:AudioBuffer = this.context.createBuffer(
@@ -101,9 +184,7 @@ namespace ttLibJs {
                     // currentTimeより進み過ぎてしまった場合は、無音分startTimeを進ませておかないとこまったことになる。
                     this.startPos = this.context.currentTime - this.pts;
                 }
-//                console.log(this.startPos + this.pts);
                 bufferNode.start(this.startPos + this.pts);
-//                bufferNode.start(0); // こっちにすると即再生される ただし音がおかしくなる。
                 this.pts += length / sampleRate; // 追加したpts分
             }
             /**

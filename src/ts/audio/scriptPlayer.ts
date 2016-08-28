@@ -15,6 +15,7 @@ namespace ttLibJs {
             private usingAudioBuffer:AudioBuffer;
             private usingPcm16Buffer:Int16Array;
             private usingBufferPos:number;
+            public isStart:boolean;
             /**
              * コンストラクタ
              * @param context 動作対象AudioContext
@@ -24,14 +25,15 @@ namespace ttLibJs {
                     context:AudioContext,
                     channelNum:number) {
                 this.processorNode = context.createScriptProcessor(
-                    0,
+                    1024, // iOSの場合はここにデータを設置しないとエラーになった。iOS8での話
                     channelNum,
                     channelNum);
                 this.processorNode.onaudioprocess = (ev:AudioProcessingEvent) => {
                     this._onaudioprocess(ev);
                 };
+                this.isStart = false;
                 this.holdAudioBuffers = null;
-                this.holdPcm16Buffers = null;
+                this.holdPcm16Buffers = [];
                 this.totalHoldSampleNum = 0;
                 this.channelNum = channelNum;
                 this.usingAudioBuffer = null;
@@ -106,21 +108,24 @@ namespace ttLibJs {
                 }
             }
             private _onaudioprocess(ev:AudioProcessingEvent) {
-                var outputBuffer:AudioBuffer = ev.outputBuffer;
-                if(outputBuffer.getChannelData(0).length > this.totalHoldSampleNum) {
-                    // ここ、コピーしておかないと、よくわからない音がでる懸念がある
-                    // 基本ラストデータのゴミがはいっている。
-                    for(var i = 0;i < outputBuffer.numberOfChannels;++ i) {
-                        var ary:Float32Array = outputBuffer.getChannelData(i);
-                        ary.set(new Float32Array(ary.length));
+                if(this.isStart || this.holdPcm16Buffers.length > 50) {
+                    this.isStart = true;
+                    var outputBuffer:AudioBuffer = ev.outputBuffer;
+                    if(outputBuffer.getChannelData(0).length > this.totalHoldSampleNum) {
+                        // ここ、コピーしておかないと、よくわからない音がでる懸念がある
+                        // 基本ラストデータのゴミがはいっている。
+                        for(var i = 0;i < outputBuffer.numberOfChannels;++ i) {
+                            var ary:Float32Array = outputBuffer.getChannelData(i);
+                            ary.set(new Float32Array(ary.length));
+                        }
+                        return;
                     }
-                    return;
-                }
-                if(this.holdAudioBuffers != null) {
-                    this._onBufferProcess(outputBuffer);
-                }
-                else if(this.holdPcm16Buffers != null) {
-                    this._onPcm16Process(outputBuffer);
+                    if(this.holdAudioBuffers != null) {
+                        this._onBufferProcess(outputBuffer);
+                    }
+                    else if(this.holdPcm16Buffers != null) {
+                        this._onPcm16Process(outputBuffer);
+                    }
                 }
             }
             private _onBufferProcess(outputBuffer:AudioBuffer):void {

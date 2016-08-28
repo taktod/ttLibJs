@@ -1,10 +1,21 @@
 /// <reference path="ttLibjs.ts" />
 /// <reference path="../../typings/index.d.ts" />
 
+var player:any = null;
+
+var decodeStack:any = [];
+
+class AudioDecoder {
+    constructor() {
+
+    }
+    public decode(data:Uint8Array):boolean {
+        return true;
+    }
+}
+
 $(function() {
-    console.log("ok");
-    $("#start").on("click", () => {
-        console.log("クリックされた。");
+    document.getElementById("start").addEventListener("click", () => {
 /*
 // bufferPlayerによるbeep音再生テスト
         var context:AudioContext = new AudioContext();
@@ -54,21 +65,81 @@ $(function() {
             console.log("error");
         });*/
 //        console.log("aacのデータをAudioContextで再生してみたいと思う。ただし後ろに無音aacをつけてやる方向で・・・");
+
+//alert("hogehoge");
+/*
+        console.log("開始します。");
         // とりあえず、scriptNodeによる再生動作
         var context:AudioContext = new AudioContext();
-        var player:tt.ScriptPlayer = new tt.ScriptPlayer(context, 2);
+        player = new tt.ScriptPlayer(context, 2);
         var playerNode:AudioNode = player.refNode();
+        var bufSrc = context.createBufferSource();
+        bufSrc.start(0);
+        bufSrc.connect(playerNode);
         playerNode.connect(context.destination);
         // webSocketでデータをもらう。
-        var ws:WebSocket = new WebSocket("ws://localhost:8080/");
+        var ws:WebSocket = new WebSocket("ws://192.168.11.8:8080/");
         ws.binaryType = "arraybuffer";
         ws.onmessage = (e:MessageEvent) => {
             var pcm:Int16Array = new Int16Array(e.data);
             player.queueInt16Array(pcm, false);
         };
         ws.onopen = (e) => {
+            console.log("mp3デコードしたデータを取得します。");
             // サーバー側でdecodeして応答を取得
             ws.send("mp3decode");
         };
+        // */
+        // iOSの場合はこっちの方が安定して動作するのか・・・
+        var context:AudioContext = new AudioContext();
+        player = new tt.BufferPlayer(context, 44100, 2);
+        var playerNode:AudioNode = player.refNode();
+        var bufSrc = context.createBufferSource();
+        bufSrc.start(0);
+        bufSrc.connect(playerNode);
+        playerNode.connect(context.destination);
+        var ws:WebSocket = new WebSocket("ws://192.168.11.8:8080/");
+        ws.binaryType = "arraybuffer";
+        ws.onmessage = (e:MessageEvent) => {
+            var pcm:Int16Array = new Int16Array(e.data);
+            player.queueInt16Array2(pcm, true);
+        };
+        ws.onopen = (e) => {
+            // サーバー側でdecodeして応答を取得
+            ws.send("mp3decode");
+        };// */
+        /*
+        var context:AudioContext = new AudioContext();
+        player = new tt.BufferPlayer(context, 44100, 1);
+        var playerNode:AudioNode = player.refNode();
+        playerNode.connect(context.destination);
+        var ws:WebSocket = new WebSocket("ws://localhost:8080/");
+        ws.binaryType = "arraybuffer";
+        var count = 0;
+        ws.onmessage = (e:MessageEvent) => {
+            count ++;
+            if(count > 10) {
+                ws.close();
+            }
+            console.log("データ受け取り");
+            console.log(new Uint8Array(e.data));
+            context.decodeAudioData(e.data, (buffer:AudioBuffer) => {
+                console.log("decode完了");
+                var pcm:Int16Array = new Int16Array(buffer.length);
+                var pcmF32:Float32Array = buffer.getChannelData(0);
+                for(var i = 0;i < buffer.length;++ i) {
+                    pcm[i] = pcmF32[i] * 32767;
+                }
+                console.log(pcm);
+                decodeStack.push(pcm);
+                player.queueInt16Array2(pcm, true);
+            }, () => {
+                console.log("エラー発生");
+            });
+        };
+        ws.onopen = (e) => {
+            // サーバー側でdecodeして応答を取得
+            ws.send("mp3");
+        };// */
     });
 });

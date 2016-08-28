@@ -67,6 +67,42 @@ var ttLibJs;
     var audio;
     (function (audio) {
         /**
+         * 自作したAudioBufferを新規につくるための動作
+         * まぁ型が合うだけである。
+         */
+        var MyAudioBufer = (function () {
+            /**
+             * コンストラクタ
+             * @param buffer コピーする元ネタ
+             */
+            function MyAudioBufer(buffer) {
+                this.duration = buffer.duration;
+                this.length = buffer.length;
+                this.numberOfChannels = buffer.numberOfChannels;
+                this.sampleRate = buffer.sampleRate;
+                this.channelData = [];
+                for (var i = 0; i < this.numberOfChannels; ++i) {
+                    this.channelData[i] = new Float32Array(buffer.getChannelData(i));
+                }
+            }
+            /**
+             * channelDataを参照する
+             */
+            MyAudioBufer.prototype.getChannelData = function (track) {
+                return this.channelData[track];
+            };
+            return MyAudioBufer;
+        }());
+        audio.MyAudioBufer = MyAudioBufer;
+    })(audio = ttLibJs.audio || (ttLibJs.audio = {}));
+})(ttLibJs || (ttLibJs = {}));
+
+/// <reference path="myAudioBuffer.ts" />
+var ttLibJs;
+(function (ttLibJs) {
+    var audio;
+    (function (audio) {
+        /**
          * audioBufferを大量に再生にまわすことで動作するプレーヤー
          * nativeの処理に任せる部分が大きいので処理軽いか？
          * なお内部で自動的にリサンプルしてくれるところもグッド
@@ -76,12 +112,23 @@ var ttLibJs;
              * コンストラクタ
              * @param context AudioContext
              */
-            function BufferPlayer(context) {
+            function BufferPlayer(context, sampleRate, channelNum) {
+                var _this = this;
                 this.context = context;
                 this.gainNode = context.createGain();
                 this.startPos = 0;
                 this.isStartPlaying = true;
                 this.pts = 0;
+                this.holdAudioBuffers = null;
+                this.holdPcm16Buffers = null;
+                this.sampleRate = sampleRate;
+                this.channelNum = channelNum;
+                setInterval(function () {
+                    //                    console.log("interval処理");
+                    while (_this.processPlay()) {
+                        ;
+                    }
+                }, 1000);
             }
             /**
              * 動作nodeを参照します。
@@ -123,6 +170,61 @@ var ttLibJs;
                 bufferNode.start(this.startPos + this.pts);
                 this.pts += buffer.length / buffer.sampleRate;
             };
+            BufferPlayer.prototype.queueInt16Array2 = function (pcm, nonCopyMode) {
+                if (this.context == null) {
+                    return;
+                }
+                if (this.holdPcm16Buffers == null) {
+                    this.holdAudioBuffers = null;
+                    this.holdPcm16Buffers = [];
+                }
+                if (nonCopyMode) {
+                    this.holdPcm16Buffers.push(pcm);
+                }
+                else {
+                    this.holdAudioBuffers.push(new Int16Array(pcm));
+                }
+                while (this.processPlay()) {
+                    ;
+                }
+            };
+            BufferPlayer.prototype.processPlay = function () {
+                // データの再生を実施します。
+                // 全部のデータをBuffer化してしまうと、データが多くなりすぎてきちんと動作できなくなることがある模様。
+                // よってすぐに再生でないデータは、pcmのまま保持しておかなければならない。
+                if (this.pts / this.sampleRate > this.context.currentTime + 5) {
+                    return false;
+                }
+                var pcm = this.holdPcm16Buffers.shift();
+                if (pcm == null) {
+                    return false;
+                }
+                var length = pcm.length / this.channelNum;
+                // コピーして保持しておくか、そのまま保持するかは重要なところ・・・
+                var bufferNode = this.context.createBufferSource();
+                // ここ・・・・lengthに+αつけておかないと、無音分追加されないのでは？
+                var appendBuffer = this.context.createBuffer(this.channelNum, length + 500, this.sampleRate);
+                for (var i = 0; i < this.channelNum; ++i) {
+                    var dest = appendBuffer.getChannelData(i);
+                    for (var j = 0; j < length; ++j) {
+                        dest[j] = pcm[i + this.channelNum * j] / 32767;
+                    }
+                }
+                bufferNode.buffer = appendBuffer;
+                bufferNode.connect(this.gainNode);
+                if (this.isStartPlaying) {
+                    this.isStartPlaying = false;
+                    this.startPos = this.context.currentTime;
+                }
+                if (this.startPos + this.pts / this.sampleRate < this.context.currentTime) {
+                    // currentTimeより進み過ぎてしまった場合は、無音分startTimeを進ませておかないとこまったことになる。
+                    this.startPos = this.context.currentTime - this.pts / this.sampleRate;
+                }
+                bufferNode.start(this.startPos + this.pts / this.sampleRate);
+                this.pts += length; // 追加したpts分
+                return true;
+            };
+            // あとはtimerの動作で必要に応じてデータをAudioBuffer化していきます。
             /**
              * int16Arrayのpcmデータを再生にまわします。
              * @param pcm        再生するpcm
@@ -134,6 +236,9 @@ var ttLibJs;
                 if (this.context == null) {
                     return;
                 }
+                // 全部のデータをBuffer化してしまうと、データが多くなりすぎてきちんと動作できなくなることがある模様。
+                // よってすぐに再生でないデータは、pcmのまま保持しておかなければならない。
+                // コピーして保持しておくか、そのまま保持するかは重要なところ・・・
                 var bufferNode = this.context.createBufferSource();
                 // ここ・・・・lengthに+αつけておかないと、無音分追加されないのでは？
                 var appendBuffer = this.context.createBuffer(channelNum, length, sampleRate);
@@ -153,9 +258,7 @@ var ttLibJs;
                     // currentTimeより進み過ぎてしまった場合は、無音分startTimeを進ませておかないとこまったことになる。
                     this.startPos = this.context.currentTime - this.pts;
                 }
-                //                console.log(this.startPos + this.pts);
                 bufferNode.start(this.startPos + this.pts);
-                //                bufferNode.start(0); // こっちにすると即再生される ただし音がおかしくなる。
                 this.pts += length / sampleRate; // 追加したpts分
             };
             /**
@@ -172,41 +275,6 @@ var ttLibJs;
             return BufferPlayer;
         }());
         audio.BufferPlayer = BufferPlayer;
-    })(audio = ttLibJs.audio || (ttLibJs.audio = {}));
-})(ttLibJs || (ttLibJs = {}));
-
-var ttLibJs;
-(function (ttLibJs) {
-    var audio;
-    (function (audio) {
-        /**
-         * 自作したAudioBufferを新規につくるための動作
-         * まぁ型が合うだけである。
-         */
-        var MyAudioBufer = (function () {
-            /**
-             * コンストラクタ
-             * @param buffer コピーする元ネタ
-             */
-            function MyAudioBufer(buffer) {
-                this.duration = buffer.duration;
-                this.length = buffer.length;
-                this.numberOfChannels = buffer.numberOfChannels;
-                this.sampleRate = buffer.sampleRate;
-                this.channelData = [];
-                for (var i = 0; i < this.numberOfChannels; ++i) {
-                    this.channelData[i] = new Float32Array(buffer.getChannelData(i));
-                }
-            }
-            /**
-             * channelDataを参照する
-             */
-            MyAudioBufer.prototype.getChannelData = function (track) {
-                return this.channelData[track];
-            };
-            return MyAudioBufer;
-        }());
-        audio.MyAudioBufer = MyAudioBufer;
     })(audio = ttLibJs.audio || (ttLibJs.audio = {}));
 })(ttLibJs || (ttLibJs = {}));
 
@@ -227,12 +295,14 @@ var ttLibJs;
              */
             function ScriptPlayer(context, channelNum) {
                 var _this = this;
-                this.processorNode = context.createScriptProcessor(0, channelNum, channelNum);
+                this.processorNode = context.createScriptProcessor(1024, // iOSの場合はここにデータを設置しないとエラーになった。iOS8での話
+                channelNum, channelNum);
                 this.processorNode.onaudioprocess = function (ev) {
                     _this._onaudioprocess(ev);
                 };
+                this.isStart = false;
                 this.holdAudioBuffers = null;
-                this.holdPcm16Buffers = null;
+                this.holdPcm16Buffers = [];
                 this.totalHoldSampleNum = 0;
                 this.channelNum = channelNum;
                 this.usingAudioBuffer = null;
@@ -303,21 +373,24 @@ var ttLibJs;
                 }
             };
             ScriptPlayer.prototype._onaudioprocess = function (ev) {
-                var outputBuffer = ev.outputBuffer;
-                if (outputBuffer.getChannelData(0).length > this.totalHoldSampleNum) {
-                    // ここ、コピーしておかないと、よくわからない音がでる懸念がある
-                    // 基本ラストデータのゴミがはいっている。
-                    for (var i = 0; i < outputBuffer.numberOfChannels; ++i) {
-                        var ary = outputBuffer.getChannelData(i);
-                        ary.set(new Float32Array(ary.length));
+                if (this.isStart || this.holdPcm16Buffers.length > 50) {
+                    this.isStart = true;
+                    var outputBuffer = ev.outputBuffer;
+                    if (outputBuffer.getChannelData(0).length > this.totalHoldSampleNum) {
+                        // ここ、コピーしておかないと、よくわからない音がでる懸念がある
+                        // 基本ラストデータのゴミがはいっている。
+                        for (var i = 0; i < outputBuffer.numberOfChannels; ++i) {
+                            var ary = outputBuffer.getChannelData(i);
+                            ary.set(new Float32Array(ary.length));
+                        }
+                        return;
                     }
-                    return;
-                }
-                if (this.holdAudioBuffers != null) {
-                    this._onBufferProcess(outputBuffer);
-                }
-                else if (this.holdPcm16Buffers != null) {
-                    this._onPcm16Process(outputBuffer);
+                    if (this.holdAudioBuffers != null) {
+                        this._onBufferProcess(outputBuffer);
+                    }
+                    else if (this.holdPcm16Buffers != null) {
+                        this._onPcm16Process(outputBuffer);
+                    }
                 }
             };
             ScriptPlayer.prototype._onBufferProcess = function (outputBuffer) {
