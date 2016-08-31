@@ -35,7 +35,6 @@ namespace ttLibJs {
                 this.sampleRate = sampleRate;
                 this.channelNum = channelNum;
                 setInterval(() => {
-//                    console.log("interval処理");
                     while(this.processPlay()) {
                         ;
                     }
@@ -78,7 +77,7 @@ namespace ttLibJs {
                     this.startPos = this.context.currentTime;
                 }
                 if(this.startPos + this.pts < this.context.currentTime) {
-                    this.startPos = this.context.currentTime;
+                    this.startPos = this.context.currentTime - this.pts;
                 }
                 bufferNode.start(this.startPos + this.pts);
                 this.pts += buffer.length / buffer.sampleRate;
@@ -108,6 +107,10 @@ namespace ttLibJs {
                 // 全部のデータをBuffer化してしまうと、データが多くなりすぎてきちんと動作できなくなることがある模様。
                 // よってすぐに再生でないデータは、pcmのまま保持しておかなければならない。
                 if(this.pts / this.sampleRate > this.context.currentTime + 5) {
+                    return false;
+                }
+                if(this.holdPcm16Buffers == null) {
+                    // 必要なデータがなくて処理できない。
                     return false;
                 }
                 var pcm:Int16Array = this.holdPcm16Buffers.shift();
