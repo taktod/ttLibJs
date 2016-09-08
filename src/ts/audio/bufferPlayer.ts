@@ -48,6 +48,12 @@ namespace ttLibJs {
                 return this.gainNode;
             }
             /**
+             * 内部動作の開始位置を参照します。
+             */
+            public refStartPos():number {
+                return this.startPos;
+            }
+            /**
              * AudioBufferを再生queueにまわします。
              * @param buffer      再生するbuffer
              * @param nonCopyMode bufferをそのまま利用するかあらたにcreateBufferするかの指定

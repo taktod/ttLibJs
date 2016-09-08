@@ -124,7 +124,6 @@ var ttLibJs;
                 this.sampleRate = sampleRate;
                 this.channelNum = channelNum;
                 setInterval(function () {
-                    //                    console.log("interval処理");
                     while (_this.processPlay()) {
                         ;
                     }
@@ -136,6 +135,12 @@ var ttLibJs;
              */
             BufferPlayer.prototype.refNode = function () {
                 return this.gainNode;
+            };
+            /**
+             * 内部動作の開始位置を参照します。
+             */
+            BufferPlayer.prototype.refStartPos = function () {
+                return this.startPos;
             };
             /**
              * AudioBufferを再生queueにまわします。
@@ -165,7 +170,7 @@ var ttLibJs;
                     this.startPos = this.context.currentTime;
                 }
                 if (this.startPos + this.pts < this.context.currentTime) {
-                    this.startPos = this.context.currentTime;
+                    this.startPos = this.context.currentTime - this.pts;
                 }
                 bufferNode.start(this.startPos + this.pts);
                 this.pts += buffer.length / buffer.sampleRate;
@@ -193,6 +198,10 @@ var ttLibJs;
                 // 全部のデータをBuffer化してしまうと、データが多くなりすぎてきちんと動作できなくなることがある模様。
                 // よってすぐに再生でないデータは、pcmのまま保持しておかなければならない。
                 if (this.pts / this.sampleRate > this.context.currentTime + 5) {
+                    return false;
+                }
+                if (this.holdPcm16Buffers == null) {
+                    // 必要なデータがなくて処理できない。
                     return false;
                 }
                 var pcm = this.holdPcm16Buffers.shift();

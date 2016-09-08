@@ -90,6 +90,10 @@ declare namespace ttLibJs {
              */
             refNode(): AudioNode;
             /**
+             * 内部動作の開始位置を参照します。
+             */
+            refStartPos(): number;
+            /**
              * AudioBufferを再生queueにまわします。
              * @param buffer      再生するbuffer
              * @param nonCopyMode bufferをそのまま利用するかあらたにcreateBufferするかの指定
