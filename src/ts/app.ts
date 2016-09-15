@@ -17,7 +17,7 @@ class AudioDecoder {
 $(function() {
     var context:AudioContext = new AudioContext();
     document.getElementById("start").addEventListener("click", () => {
-
+/*
 // bufferPlayerによるbeep音再生テスト
         var beep:tt.BeepGenerator = new tt.BeepGenerator(440, 44100, 1);
         var player:tt.BufferPlayer = new tt.BufferPlayer(context, 44100, 1);
@@ -25,6 +25,7 @@ $(function() {
         playerNode.connect(context.destination);
         var pcm:Int16Array = beep.makeBeepBySampleNum(441);
         player.queueInt16Array(pcm, pcm.length, 44100, 1);
+        */
 /*
 // scriptPlayerによるbeep音再生テスト
         var context:AudioContext = new AudioContext();
@@ -37,7 +38,6 @@ $(function() {
         */
 
 // sceneCapture と sceneDrawerの動作テスト
-/*
         navigator.getUserMedia({
             audio:false,
             video:true
@@ -62,7 +62,7 @@ $(function() {
         },
         (error:MediaStreamError) => {
             console.log("error");
-        });*/
+        });// */
 //        console.log("aacのデータをAudioContextで再生してみたいと思う。ただし後ろに無音aacをつけてやる方向で・・・");
 
 //alert("hogehoge");

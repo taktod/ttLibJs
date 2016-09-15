@@ -815,8 +815,8 @@ var ttLibJs;
                 // ここでtargetがcanvasでないものを有効にする場合(videoとか)
                 // 内側にcanvasをつくってそこからstreamを取得 videoに紐付ける的な動作が必要
                 this.yuvGl = new video.VideoGL(target);
-                var vs = "uniform mat4 a;uniform mat4 b;uniform mat4 c;attribute mediump vec4 d;attribute mediump vec4 e;varying mediump vec2 f;void main(){gl_Position=b*a*d;f=(c*e).xy;}";
-                var fs = "varying mediump vec2 f;precision mediump float;uniform sampler2D h;uniform sampler2D i;uniform sampler2D j;const float k=16./255.;void main(){mediump vec3 l;lowp vec3 m;l.x=(texture2D(h,f).r-k);l.y=(texture2D(i,f).r-0.5);l.z=(texture2D(j,f).r-0.5);\nm=mat3(1.164,1.164,1.164,0.,-0.213,2.112,1.793,-0.533,0.)*l;gl_FragColor=vec4(m,1.);}";
+                var vs = "uniform mat4 a,b,c,g,k;attribute mediump vec4 d,e;varying mediump vec2 f,n,o;void main(){gl_Position=b*a*d;f=(c*e).xy;n=(g*e).xy;o=(k*e).xy;}";
+                var fs = "varying mediump vec2 f,n,o;precision mediump float;uniform sampler2D h,i,j;const float k=16./255.;void main(){mediump vec3 l;lowp vec3 m;l.x=(texture2D(h,f).r-k);l.y=(texture2D(i,n).r-0.5);l.z=(texture2D(j,o).r-0.5);m=mat3(1.164,1.164,1.164,0.,-0.213,2.112,1.793,-0.533,0.)*l;gl_FragColor=vec4(m,1.)}";
                 this.yuvGl.setupShaderFromSource(vs, fs, 'b', video.VideoGL.createMat4Identity());
                 this.yuvGl.setVertex([
                     -1.0, -1.0,
@@ -856,9 +856,25 @@ var ttLibJs;
                 if (y.length == 0 || u.length == 0 || v.length == 0) {
                     return;
                 }
+                // やっぱりここでtexture cをつかってstrideの調整してるっぽいですね。
+                // できたら変更になったら送る・・・にしたい。
                 var texLocation = this.yuvGl.getUniformLocation('c');
                 this.yuvGl.refGl().uniformMatrix4fv(texLocation, false, new Float32Array([
                     1.0 * this.width / yStride, 0.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0, 0.0,
+                    0.0, 0.0, 1.0, 0.0,
+                    0.0, 0.0, 0.0, 1.0
+                ]));
+                texLocation = this.yuvGl.getUniformLocation('g');
+                this.yuvGl.refGl().uniformMatrix4fv(texLocation, false, new Float32Array([
+                    0.5 * this.width / uStride, 0.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0, 0.0,
+                    0.0, 0.0, 1.0, 0.0,
+                    0.0, 0.0, 0.0, 1.0
+                ]));
+                texLocation = this.yuvGl.getUniformLocation('k');
+                this.yuvGl.refGl().uniformMatrix4fv(texLocation, false, new Float32Array([
+                    0.5 * this.width / vStride, 0.0, 0.0, 0.0,
                     0.0, 1.0, 0.0, 0.0,
                     0.0, 0.0, 1.0, 0.0,
                     0.0, 0.0, 0.0, 1.0
