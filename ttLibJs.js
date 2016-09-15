@@ -267,7 +267,7 @@ var ttLibJs;
                     // currentTimeより進み過ぎてしまった場合は、無音分startTimeを進ませておかないとこまったことになる。
                     this.startPos = this.context.currentTime - this.pts;
                 }
-                bufferNode.start(this.startPos + this.pts);
+                bufferNode.start(this.startPos + this.pts + 5);
                 this.pts += length / sampleRate; // 追加したpts分
             };
             /**

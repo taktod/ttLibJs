@@ -15,17 +15,16 @@ class AudioDecoder {
 }
 
 $(function() {
+    var context:AudioContext = new AudioContext();
     document.getElementById("start").addEventListener("click", () => {
-/*
+
 // bufferPlayerによるbeep音再生テスト
-        var context:AudioContext = new AudioContext();
         var beep:tt.BeepGenerator = new tt.BeepGenerator(440, 44100, 1);
-        var player:tt.BufferPlayer = new tt.BufferPlayer(context);
+        var player:tt.BufferPlayer = new tt.BufferPlayer(context, 44100, 1);
         var playerNode:AudioNode = player.refNode();
         playerNode.connect(context.destination);
-        var pcm:Int16Array = beep.makeBeepBySampleNum(240000);
+        var pcm:Int16Array = beep.makeBeepBySampleNum(441);
         player.queueInt16Array(pcm, pcm.length, 44100, 1);
-        */
 /*
 // scriptPlayerによるbeep音再生テスト
         var context:AudioContext = new AudioContext();
@@ -91,7 +90,7 @@ $(function() {
         };
         // */
         // iOSの場合はこっちの方が安定して動作するのか・・・
-        var context:AudioContext = new AudioContext();
+/*        var context:AudioContext = new AudioContext();
         player = new tt.BufferPlayer(context, 44100, 2);
         var playerNode:AudioNode = player.refNode();
         var bufSrc = context.createBufferSource();
