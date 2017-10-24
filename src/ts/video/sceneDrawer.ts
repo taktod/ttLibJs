@@ -24,7 +24,7 @@ namespace ttLibJs {
                 // 内側にcanvasをつくってそこからstreamを取得 videoに紐付ける的な動作が必要
                 this.yuvGl = new VideoGL(target);
                 var vs:string = `uniform mat4 a,b,c,g,k;attribute mediump vec4 d,e;varying mediump vec2 f,n,o;void main(){gl_Position=b*a*d;f=(c*e).xy;n=(g*e).xy;o=(k*e).xy;}`;
-                var fs:string = `varying mediump vec2 f,n,o;precision mediump float;uniform sampler2D h,i,j;const float k=16./255.;void main(){mediump vec3 l;lowp vec3 m;l.x=(texture2D(h,f).r-k);l.y=(texture2D(i,n).r-0.5);l.z=(texture2D(j,o).r-0.5);m=mat3(1.164,1.164,1.164,0.,-0.213,2.112,1.793,-0.533,0.)*l;gl_FragColor=vec4(m,1.)}`;
+                var fs:string = `varying mediump vec2 f,n,o;precision mediump float;uniform sampler2D h,i,j;const float k=16./255.;void main(){mediump vec3 l;lowp vec3 m;l.x=(texture2D(h,f).r-k);l.y=(texture2D(i,n).r-0.5);l.z=(texture2D(j,o).r-0.5);m=mat3(1.164,1.164,1.164,0.,-0.213,2.112,1.793,-0.533,0.)*l;gl_FragColor=vec4(m,1.);}`;
                 this.yuvGl.setupShaderFromSource(
                     vs,
                     fs,
